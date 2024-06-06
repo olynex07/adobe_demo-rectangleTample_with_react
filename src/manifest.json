@@ -1,0 +1,22 @@
+{
+    "testId": "f6714824-e45c-4e31-a78a-0691c6cff3c5",
+    "name": "Olynex Adobe Tamplate",
+    "version": "1.0.0",
+    "manifestVersion": 2,
+    "requirements": {
+        "apps": [
+            {
+                "name": "Express",
+                "apiVersion": 1
+            }
+        ]
+    },
+    "entryPoints": [
+        {
+            "type": "panel",
+            "id": "panel1",
+            "main": "index.html",
+            "documentSandbox": "code.js"
+        }
+    ]
+}
