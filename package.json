@@ -15,12 +15,16 @@
         "panel"
     ],
     "dependencies": {
+        "@adobe/react-spectrum": "^3.35.1",
+        "@spectrum-web-components/link": "^0.42.5",
         "@swc-react/button": "0.39.4",
         "@swc-react/theme": "0.39.4",
         "axios": "^1.7.2",
+        "lodash": "^4.17.21",
         "react": "18.2.0",
         "react-dom": "18.2.0",
-        "react-tabs": "^6.0.2"
+        "react-tabs": "^6.0.2",
+        "sweetalert2": "^11.11.1"
     },
     "devDependencies": {
         "@adobe/ccweb-add-on-scripts": "^2.2.0",

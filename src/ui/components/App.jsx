@@ -1,37 +1,13 @@
-// App.jsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "@spectrum-web-components/theme/express/scale-medium.js";
 import "@spectrum-web-components/theme/express/theme-light.js";
+import "@spectrum-web-components/link/sp-link.js";
+import { Link } from "@spectrum-web-components/link";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import "./App.css";
-
-const imagesFromAPI = [
-  {
-    img: "https://i.ibb.co/r304NRs/hans-isaacson-q-Tj-O9-RFFO0g-unsplash.png"
-  },
-  {
-    img: "https://i.ibb.co/85GxsMp/leo-visions-I62h3-Pv-JSI-unsplash.jpg"
-  },
-  {
-    img: "https://i.ibb.co/8s5cWCw/matthew-hamilton-m-TJg-L0-YQp-U-unsplash.jpg"
-  },
-  {
-    img: "https://i.ibb.co/fXhsZff/wade-meng-Lg-Cj9qcrfh-I-unsplash.jpg"
-  },
-  {
-    img: "https://i.ibb.co/vXSjSXM/matthieu-rochette-F3-Nmwc-QLzu8-unsplash.jpg"
-  },
-  {
-    img: "https://i.ibb.co/JBX4HGS/emmanuel-cassar-ax4-QBMLQcb-Y-unsplash.jpg"
-  },
-  {
-    img: "https://i.ibb.co/zn6Nf7R/jigar-panchal-Cp4dn8-6-Y5-I-unsplash.jpg"
-  },
-  {
-    img: "https://i.ibb.co/kxMg56Y/clark-van-der-beken-s9-PEAma2h-Nc-unsplash.jpg"
-  }
-];
+import Swal from "sweetalert2";
+import axios from "axios";
 
 const App = ({ sandboxProxy, addOnUISdk }) => {
   const [width, setWidth] = useState(200);
@@ -39,71 +15,98 @@ const App = ({ sandboxProxy, addOnUISdk }) => {
   const [centerX, setCenterX] = useState(20);
   const [centerY, setCenterY] = useState(20);
   const [color, setColor] = useState("#5290ff");
+  const [icons, setIcons] = useState([]);
+  const [pluning, setPluning] = useState(null);
 
-  useEffect(() => {
-    // Wait for the SDK to be ready before rendering elements in the DOM.
-    addOnUISdk.ready.then(async () => {
-      imagesFromAPI.forEach((imageObj, index) => {
-        console.log(imageObj);
-        const image = document.getElementById(`image-${index}`);
-
-        // Add event listener for click event
-        image.addEventListener("click", addToDocument);
-
-        // Enable drag to document for the image.
-        addOnUISdk.app.enableDragToDocument(image, {
-          previewCallback: (element) => new URL(element.src),
-          completionCallback: async (element) => [{ blob: await getBlob(element.src) }],
-        });
-      });
-
-      // Register event handler for "dragstart" event
-      addOnUISdk.app.on("dragstart", startDrag);
-      // Register event handler for 'dragend' event
-      addOnUISdk.app.on("dragend", endDrag);
-    });
-  }, [addOnUISdk]);
-/**
-   * Add image to the document.
-   */
-const addToDocument = async (event) => {
-  const url = event.currentTarget.src;
-  console.log(url);
-  await getBlob(url);
-  sandboxProxy.createIcon(url);
-};
-
-/**
- * Handle "dragstart" event
- */
-const startDrag = (eventData) => {
-  console.log("The drag event has started for", eventData.element.id);
-};
-
-  /**
-   * Handle "dragend" event
-   */
-  const endDrag = (eventData) => {
-    if (!eventData.dropCancelled) {
-      console.log("The drag event has ended for", eventData.element.id);
-    } else {
-      console.log("The drag event was cancelled for", eventData.element.id);
+  const fetchPluningData = async () => {
+    try {
+      const res = await axios.get("https://icon-server.vercel.app/plunings");
+      if (res.data && res.data.length > 0) {
+        // Assuming the API returns an array of plunings and we need the latest one
+        const sortedPlunings = res.data.sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        );
+        setPluning(sortedPlunings[0]); // Set the latest pluning
+      }
+    } catch (error) {
+      console.error("Failed to fetch pluning data:", error);
     }
   };
 
-  /**
-   * Get the binary object for the image.
-   */
-  const getBlob = async (url) => {
-    return await fetch(url).then(response => response.blob());
+  useEffect(() => {
+    const getIconsData = async () => {
+      try {
+        const res = await axios.get("https://icon-server.vercel.app/adobe-icon");
+        setIcons(res.data);
+      } catch (error) {
+        console.error("Failed to fetch icons data:", error);
+      }
+    };
+
+    getIconsData();
+    fetchPluningData();
+
+    // Set an interval to check pluning status every minute
+    const interval = setInterval(() => {
+      fetchPluningData();
+    }, 2000); // 60,000 milliseconds = 1 minute
+
+    return () => clearInterval(interval); // Clean up the interval on component unmount
+  }, []);
+
+  console.log(pluning);
+
+  const isUserPremium = () => {
+    if (!pluning) return false;
+
+    const currentDate = new Date();
+    const paymentDate = new Date(pluning?.buyDate);
+
+    if (pluning?.unlimited) {
+      return true;
+    } else {
+      const differenceInDays = Math.floor(
+        (currentDate - paymentDate) / (1000 * 60 * 60 * 24)
+      );
+      return differenceInDays <= pluning?.durationDays;
+    }
+  };
+
+  async function getBlob(url) {
+    return await fetch(url).then((response) => response.blob());
+  }
+
+  const handleIconClick = async (iconUrl) => {
+    const blob = await getBlob(iconUrl.img);
+    if (iconUrl?.type === "free" || isUserPremium()) {
+      addOnUISdk.app.document.addImage(blob);
+    } else {
+      Swal.fire({
+        title: "Opps!",
+        text: "This is a premium icon. Would you like to purchase it?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "http://localhost:5173";
+          // <Link href="https://olynex.com">example link</Link>
+          // window.open("https://example.com/your-exported-design.pdf")
+        }
+      });
+    }
   };
 
   const handleClick = () => {
-    sandboxProxy.createRectangle(Number(width), Number(height), Number(centerX), Number(centerY), color);
-  };
-
-  const handleIconClick = (iconUrl) => {
-    sandboxProxy.createIcon(iconUrl);
+    sandboxProxy.createRectangle(
+      Number(width),
+      Number(height),
+      Number(centerX),
+      Number(centerY),
+      color
+    );
   };
 
   return (
@@ -172,11 +175,11 @@ const startDrag = (eventData) => {
       </TabPanel>
       <TabPanel>
         <div className="grid grid-cols-2 items-center mx-5 gap-5">
-          {imagesFromAPI.map((img, i) => (
+          {icons.map((img, i) => (
             <div
               key={i}
               className="w-full cursor-pointer rounded-md"
-              onClick={() => handleIconClick(img.img)}
+              onClick={() => handleIconClick(img)}
             >
               <img
                 id={`image-${i}`}

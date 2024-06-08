@@ -1,4 +1,3 @@
-// code.js
 import addOnSandboxSdk from "add-on-sdk-document-sandbox";
 import { editor } from "express-document-sdk";
 
@@ -36,29 +35,6 @@ function start() {
 
       // Add the rectangle to the document.
       editor.context.insertionParent.children.append(rectangle);
-    },
-
-    createIcon: async (iconUrl) => {
-      try {
-        console.log("Creating icon with data.");
-    
-        const response = await fetch(iconUrl);
-        const blob = await response.blob();
-    
-        // Load the bitmap image asynchronously
-        const bitmapImage = await editor.loadBitmapImage(blob);
-    
-        // Queue an async edit to create the image container
-        editor.queueAsyncEdit(() => {
-          // Create scene node to display the image, and add it to the current artboard
-          const mediaContainer = editor.createImageContainer(bitmapImage);
-          editor.context.insertionParent.children.append(mediaContainer);
-        });
-    
-        console.log("Icon added successfully.");
-      } catch (error) {
-        console.error("Error adding icon:", error);
-      }
     },
   };
 
